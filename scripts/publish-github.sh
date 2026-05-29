@@ -4,11 +4,33 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-GH_BIN="${GH_BIN:-gh}"
-if ! command -v "$GH_BIN" >/dev/null 2>&1; then
+find_gh() {
+  if [[ -n "${GH_BIN:-}" ]] && command -v "$GH_BIN" >/dev/null 2>&1; then
+    echo "$GH_BIN"
+    return
+  fi
+  if command -v gh >/dev/null 2>&1; then
+    command -v gh
+    return
+  fi
+  local candidate
+  for candidate in \
+    /tmp/gh_2.69.0_macOS_arm64/bin/gh \
+    /opt/homebrew/bin/gh \
+    /usr/local/bin/gh; do
+    if [[ -x "$candidate" ]]; then
+      echo "$candidate"
+      return
+    fi
+  done
+  return 1
+}
+
+GH_BIN="$(find_gh)" || {
   echo "Cần GitHub CLI (gh). Cài: https://cli.github.com"
+  echo "Hoặc: GH_BIN=/đường/dẫn/gh ./scripts/publish-github.sh"
   exit 1
-fi
+}
 
 if ! "$GH_BIN" auth status >/dev/null 2>&1; then
   echo "Đăng nhập GitHub..."
